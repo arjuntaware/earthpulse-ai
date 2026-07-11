@@ -1,41 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function Home() {
   const [dragging, setDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (!e.target.files?.length) return;
+
+    setSelectedFile(e.target.files[0]);
+    setResult(null);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+
+    if (!e.dataTransfer.files.length) return;
+
+    setSelectedFile(e.dataTransfer.files[0]);
+    setResult(null);
+  };
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  async function uploadImage() {
+    if (!selectedFile) {
+      alert("Please select a satellite image.");
+      return;
+    }
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      setResult(data);
+    } catch (err) {
+      console.error(err);
+      alert("Could not connect to backend.");
+    }
+
+    setLoading(false);
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 overflow-hidden">
-      {/* Background Blur */}
+
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-green-200/40 blur-[140px]" />
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-200/40 blur-[150px]" />
 
       <section className="relative max-w-7xl mx-auto px-8 py-20">
 
-        {/* Navbar */}
-
         <nav className="flex justify-between items-center">
-
-          <div className="text-3xl font-bold tracking-tight">
+          <div className="text-3xl font-bold">
             EarthPulse AI
           </div>
 
-          <button className="px-5 py-2 rounded-full bg-black text-white hover:scale-105 transition">
+          <button className="px-5 py-2 rounded-full bg-black text-white">
             Dashboard
           </button>
-
         </nav>
-
-        {/* Hero */}
 
         <div className="mt-24 text-center">
 
-          <div className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium shadow-sm">
+          <div className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium">
             AI Powered Environmental Risk Detection
           </div>
 
-          <h1 className="mt-8 text-7xl font-black tracking-tight leading-tight text-slate-900">
+          <h1 className="mt-8 text-7xl font-black leading-tight">
             Understand Every
             <br />
             Satellite Image
@@ -43,30 +93,21 @@ export default function Home() {
             Before Disaster Strikes
           </h1>
 
-          <p className="mt-8 max-w-3xl mx-auto text-xl text-slate-600 leading-9">
-            Upload a satellite image and let artificial intelligence identify
-            floods, droughts, wildfire susceptibility, erosion, vegetation
-            health, urban expansion, pollution indicators and dozens of other
-            environmental risks in seconds.
+          <p className="mt-8 max-w-3xl mx-auto text-xl text-slate-600">
+            Upload a satellite image and let AI analyze it.
           </p>
-
-          <div className="flex justify-center gap-6 mt-12">
-
-            <button className="px-8 py-4 rounded-2xl bg-black text-white text-lg font-semibold hover:scale-105 transition duration-300 shadow-xl">
-              Analyze Image
-            </button>
-
-            <button className="px-8 py-4 rounded-2xl border border-slate-300 bg-white hover:bg-slate-100 transition text-lg">
-              Learn More
-            </button>
-
-          </div>
 
         </div>
 
-        {/* Upload */}
-
         <div className="mt-28">
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.tif,.tiff"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
           <div
             onDragOver={(e) => {
@@ -74,141 +115,89 @@ export default function Home() {
               setDragging(true);
             }}
             onDragLeave={() => setDragging(false)}
-            onDrop={() => setDragging(false)}
-            className={`transition-all duration-300
-            ${
+            onDrop={handleDrop}
+            className={`transition-all duration-300 ${
               dragging
-                ? "scale-[1.02] border-green-500 shadow-2xl"
+                ? "scale-[1.02] border-green-500"
                 : "border-slate-300"
-            }
-            border-2 border-dashed
-            rounded-[40px]
-            bg-white/70
-            backdrop-blur-xl
-            p-20
-            text-center
-            shadow-xl`}
+            } border-2 border-dashed rounded-[40px] bg-white/70 p-20 text-center shadow-xl`}
           >
-            <div className="text-5xl font-bold text-slate-800">
+
+            <div className="text-5xl font-bold">
               Drop Satellite Image
             </div>
 
-            <p className="mt-5 text-slate-500 text-lg">
-              PNG • JPG • GeoTIFF
+            <p className="mt-5 text-slate-500">
+              PNG • JPG • JPEG • TIFF
             </p>
 
-            <button className="mt-10 px-8 py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white text-lg transition">
+            <button
+              onClick={openFilePicker}
+              className="mt-10 px-8 py-4 rounded-xl bg-green-600 text-white"
+            >
               Choose File
             </button>
-          </div>
 
-        </div>
+            {selectedFile && (
+              <div className="mt-8">
 
-        {/* Stats */}
-
-        <div className="grid md:grid-cols-4 gap-8 mt-24">
-
-          {[
-            ["40+", "Environmental Indicators"],
-            ["98%", "Detection Accuracy"],
-            ["<10s", "Average Processing"],
-            ["24/7", "Cloud AI Analysis"],
-          ].map(([number, text]) => (
-            <div
-              key={text}
-              className="rounded-3xl bg-white shadow-lg p-8 hover:-translate-y-2 transition duration-300"
-            >
-              <div className="text-5xl font-black">{number}</div>
-
-              <div className="mt-4 text-slate-500">{text}</div>
-            </div>
-          ))}
-
-        </div>
-
-        {/* Features */}
-
-        <div className="mt-32">
-
-          <h2 className="text-5xl font-bold text-center">
-            Everything Detected Automatically
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8 mt-16">
-
-            {[
-              {
-                title: "Flood Analysis",
-                desc: "Detect flood prone regions using terrain, elevation and water body patterns."
-              },
-              {
-                title: "Wildfire Risk",
-                desc: "Estimate vegetation dryness and fire susceptibility."
-              },
-              {
-                title: "Vegetation Health",
-                desc: "Analyze forest degradation and crop conditions."
-              },
-              {
-                title: "Urban Growth",
-                desc: "Track city expansion and land-use changes."
-              },
-              {
-                title: "Soil & Erosion",
-                desc: "Identify erosion hotspots and exposed land."
-              },
-              {
-                title: "Environmental Report",
-                desc: "Generate AI summaries with actionable insights."
-              }
-            ].map((card) => (
-
-              <div
-                key={card.title}
-                className="group rounded-[30px] bg-white p-8 shadow-lg hover:shadow-2xl hover:-translate-y-3 transition duration-500"
-              >
-                <h3 className="text-2xl font-bold">
-                  {card.title}
-                </h3>
-
-                <p className="mt-5 text-slate-500 leading-8">
-                  {card.desc}
+                <p className="text-green-700 font-semibold">
+                  Selected:
                 </p>
 
-                <div className="mt-8 h-1 w-0 bg-green-500 group-hover:w-full transition-all duration-500"></div>
+                <p>{selectedFile.name}</p>
+
+                <p className="text-sm text-slate-500">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
 
               </div>
-
-            ))}
+            )}
 
           </div>
 
         </div>
 
-        {/* CTA */}
+        <div className="mt-16 text-center">
 
-        <div className="mt-36">
+          <button
+            onClick={uploadImage}
+            disabled={loading}
+            className="px-10 py-4 rounded-xl bg-black text-white text-lg hover:scale-105 transition"
+          >
+            {loading ? "Uploading..." : "Start Analysis"}
+          </button>
 
-          <div className="rounded-[40px] bg-gradient-to-r from-green-600 to-emerald-500 p-16 text-center text-white shadow-2xl">
+        </div>
 
-            <h2 className="text-5xl font-black">
-              Ready to Analyze Your First Image?
+        {result && (
+          <div className="mt-16 rounded-3xl bg-white shadow-xl p-10">
+
+            <h2 className="text-3xl font-bold mb-6">
+              Backend Response
             </h2>
 
-            <p className="mt-6 text-lg text-green-100 max-w-2xl mx-auto">
-              Upload a satellite image and receive a comprehensive AI-generated
-              environmental assessment within seconds.
+            <p>
+              <strong>Filename:</strong> {result.filename}
             </p>
 
-            <button className="mt-10 px-10 py-4 rounded-xl bg-white text-black text-lg font-semibold hover:scale-105 transition">
-              Start Analysis
-            </button>
+            <p>
+              <strong>Width:</strong> {result.width}px
+            </p>
+
+            <p>
+              <strong>Height:</strong> {result.height}px
+            </p>
+
+            <p className="mt-4 text-green-600 font-semibold">
+              {result.message}
+            </p>
 
           </div>
-
-        </div>
+        )}
 
       </section>
+
     </main>
   );
 }
